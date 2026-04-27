@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <title>얼굴 그려주는 로봇</title>
+  <link href="../css/style.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Nanum+Gothic&display=swap" rel="stylesheet">
+
+</head>
+
+<body class="page1">
+  <button class="settings-icon" id="settings-button"><img src="../images/setting2.png" /></button>
+  <div id="settings-modal" class="modal">
+    <div class="modal-content">
+      <span class="close-button" id="close-settings">&times;</span>
+      <h2>설정</h2>
+
+      <div class="volume-wrapper">
+        <label for="volume-slider">🔊 볼륨 조절(효과음)</label>
+        <div class="slider-container">
+          <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="0.5">
+        </div>
+      </div>
+
+      <div class="volume-wrapper2">
+        <label for="volume-slider2">🔊 볼륨 조절(노래)</label>
+        <div class="slider-container2">
+          <input type="range" id="volume-slider2" min="0" max="1" step="0.01" value="0.5">
+        </div>
+      </div>
+
+      <div class="volume-wrapper">
+        <label for="volume-slider">로봇 전원</label>
+        <div class="slider-container power-buttons">
+          <button class="robotPowerBtn" id="robotPowerOnBtn" onclick="setRobotPower(true)">ON</button>
+          <button class="robotPowerBtn" id="robotPowerOffBtn" onclick="setRobotPower(false)">OFF</button>
+        </div>
+      </div>
+
+      <div class="volume-wrapper">
+        <label for="volume-slider">펜 교체</label>
+        <div class="slider-container power-buttons">
+          <button class="robotMoveBtn" id="robotMoveChangeBtn" onclick="setPenPosition('change')">교체</button>
+          <button class="robotMoveBtn" id="robotMoveHomeBtn" onclick="setPenPosition('home')">홈</button>
+        </div>
+      </div>
+
+      <div class="volume-wrapper">
+        <label for="volume-slider">종료</label>
+        <div class="slider-container">
+          <button class="Offbtn" id="Offbtn" onclick="SystemOff()">종료</button>
+        </div>
+      </div>
+
+    </div>
+    <div id="RobotloadingOverlay" style="display: none;">
+      <div class="RobotloadingBox" id="RobotloadingBox">
+        <div class="Robotspinner" id="Robotspinner"></div>
+        <div class="RobotloadingText" id="RobotloadingText">로봇 전원 켜는중</div>
+      </div>
+    </div>
+  </div>
+  <div class="container">
+    <div class="title">
+      <span class="red bounce" style="animation-delay: 0s;">얼</span>
+      <span class="orange bounce" style="animation-delay: 0.2s;">굴</span>
+      <span class="yellow bounce" style="animation-delay: 0.4s;">그</span>
+      <span class="green bounce" style="animation-delay: 0.6s;">려</span>
+      <span class="blue bounce" style="animation-delay: 0.8s;">주</span>
+      <span class="purple bounce" style="animation-delay: 1.0s;">는</span>
+      <span class="navy bounce" style="animation-delay: 1.2s;">로</span>
+      <span class="pink bounce" style="animation-delay: 1.4s;">봇</span>
+    </div>
+    <div class="sub">키오스크에서 결제 후 이용해주세요!</div>
+    <button id="startBtn" class="btn" disabled>시작하기</button>
+    <div id="statusMsg" style="margin-top: 10px; color: red;"></div>
+  </div>
+  <script>
+    sessionStorage.setItem('hasRetried', 'false');  // 촬영 기록 리셋
+    const startBtn = document.getElementById('startBtn');
+    const statusMsg = document.getElementById('statusMsg');
+    let lastOrderNum = '';  // 중복 주문 방지용
+    let orderDetected = false;
+
+    function formatDate(date) {
+      return date.toISOString().slice(0, 10);
+    }
+
+    async function fetchOrder() {
+      const url = 'https://boorsue.co.kr/vbPHP/toorderload.php';
+      const id = 'dsdc'; // 여기에 실제 ID 입력
+      const pw = '12345'; // 여기에 실제 PW 입력
+
+      const today = new Date();
+      const yesterday = new Date(today);
+      yesterday.setDate(today.getDate() - 1);
+
+      const formData = new URLSearchParams({
+        ID: id,
+        PassWord: pw,
+        day: formatDate(yesterday),
+        day2: formatDate(today),
+        noshowt: 'N',
+        select: '접수'
+      });
+
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: formData.toString(),
+        });
+
+        const text = await response.text();
+
+        const hasOrder = text.includes('<menubrrs>') && !text.includes('<menubrrs></menubrrs>');
+
+        if (hasOrder) {
+          // 주문번호 추출
+          const numMatch = text.match(/<menubrrs>.*?num\[(\d+)\]num/);
+          const orderNum = numMatch ? numMatch[1] : null;
+          const completedOrderNum = sessionStorage.getItem('completedOrderNum');
+          sessionStorage.setItem('orderNum', orderNum);
+          if (!orderDetected && orderNum && orderNum !== lastOrderNum &&
+            orderNum !== completedOrderNum) {
+            orderDetected = true;
+            // 새 주문이 있을 경우
+            lastOrderNum = orderNum;
+            startBtn.disabled = false;
+            startBtn.onclick = () => location.href = 'paper_info.html';
+            // statusMsg.textContent = `주문 확인됨 (주문번호: ${orderNum} complete ${completedOrderNum})`;
+          } else {
+            // 중복 주문인 경우
+            if (!orderDetected) {
+              startBtn.disabled = true;
+              // startBtn.disabled = false;
+              // startBtn.onclick = () => location.href = 'paper_info.html';
+              // statusMsg.textContent = '새로운 주문이 없습니다.';
+            }
+
+          }
+        } else {
+          // 주문 없음
+          if (!orderDetected) {
+            startBtn.disabled = true;
+            // startBtn.disabled = false;
+            // startBtn.onclick = () => location.href = 'paper_info.html';
+            // statusMsg.textContent = '현재 처리할 수 있는 주문이 없습니다.';
+          }
+        }
+      } catch (error) {
+        // statusMsg.textContent = 'API 요청 실패: ' + error.message;
+      }
+    }
+
+    // 초기 1회 + 5초 간격 반복 요청 (주문 감지 시 자동 정지)
+    let orderPollId = null;
+    window.onload = function () {
+      fetchOrder();
+      orderPollId = setInterval(() => {
+        if (orderDetected) {
+          clearInterval(orderPollId);
+          orderPollId = null;
+          return;
+        }
+        fetchOrder();
+      }, 5000);
+    };
+    window.addEventListener('beforeunload', () => {
+      if (orderPollId) {
+        clearInterval(orderPollId);
+        orderPollId = null;
+      }
+    });
+  </script>
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      let savedState = localStorage.getItem('robotPowerState');
+      let state = savedState === 'true'; // 문자열 → 불리언 변환
+      console.log(savedState)
+      updatePowerButton(state);
+
+      // 펜 위치 복원 (저장값 없으면 홈)
+      let savedPenState = localStorage.getItem('penPositionState');
+      let penState = savedPenState === 'true';
+      updatePenButton(penState);
+    });
+  </script>
+  <script>
+    const { ipcRenderer } = require('electron');
+    const slider = document.getElementById('volume-slider2');
+    slider.addEventListener('input', () => {
+      ipcRenderer.send('volume-change', parseFloat(slider.value));
+    });
+
+  </script>
+  <script src="../js/main.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>camera_shot</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Nanum+Gothic&display=swap" rel="stylesheet">
+
+  <style>
+    .timer {
+      position: fixed;
+      top: 8rem;           /* 브라우저 최상단에서 1.5rem */
+      right: 15rem;           /* 브라우저 오른쪽에서 2rem */
+      font-size: 4rem;
+      font-weight: bold;
+      color: rgb(0, 0, 0);
+      padding: 10px 20px;
+      border-radius: 20px;
+      z-index: 999;
+    }
+  </style>
+</head>
+<body>
+  <div class="container2">
+    <div class="timer" id="countdown">5</div>
+    <div class="camera-wrapper">
+        <!-- 카메라 영상 -->
+        <video id="camera" autoplay playsinline muted></video>
+        <!-- 카메라 프레임 이미지 -->
+        <img src="../images/camerabox.png" alt="카메라 틀" class="camera-frame">        
+         <!-- 가이드라인 이미지 -->
+        <img src="../images/imagetool.png" alt="가이드라인" class="guide-line">
+   
+   </div>
+  </div>
+  <div id="loadingOverlay" style="display: none;">
+    <div class="loadingBox">
+      <div class="spinner"></div>
+      <div class="loadingText">이미지 저장 중입니다</div>
+    </div>
+  </div>
+
+  <script>
+    let timeLeft = 5;
+    const timerDisplay = document.getElementById('countdown');
+
+    const countdown = setInterval(() => {
+      timeLeft--;
+      timerDisplay.textContent = `${timeLeft}`;
+
+      if (timeLeft <= 0) {
+        clearInterval(countdown);
+        
+      }
+    }, 1000);
+  </script>
+  <script src="../js/camera.js"></script>
+</body>
+</html>

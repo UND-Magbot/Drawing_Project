@@ -1,0 +1,80 @@
+<audio id="bgm" controls autoplay></audio>
+
+<script>
+  const fs = require('fs');
+  const path = require('path');
+  const { ipcRenderer } = require('electron');
+
+  const audio = document.getElementById('bgm');
+
+  const musicDir = "C:/MusicFolder";
+  let playlist = [];
+  let currentIndex = 0;
+
+  const savedVolume = parseFloat(localStorage.getItem('musicVolume'));
+  const initialVolume = isNaN(savedVolume) ? 0.5 : savedVolume;
+  let volumeSet = false;
+
+  // ✅ 이벤트 먼저 등록
+  audio.addEventListener('loadedmetadata', () => {
+    console.log("📥 loadedmetadata 이벤트 진입");
+    audio.volume = initialVolume;
+    console.log('🔊 오디오 볼륨 설정됨:', initialVolume);
+  });
+
+  ipcRenderer.on('set-volume', (event, volume) => {
+    // initialVolume = volume;
+    volumeSet = true;
+
+    // 이미 로드된 경우 즉시 반영
+    if (audio.readyState >= 1) {
+      audio.volume = volume;
+      localStorage.setItem('musicVolume', volume);
+      console.log('🔊 이미 로드됨 → 즉시 볼륨 적용:', volume);
+    }
+  });
+
+  // ✅ 시작 시 볼륨 요청
+  ipcRenderer.send('get-volume');
+
+  if (!fs.existsSync(musicDir)) {
+    console.warn(`🎵 음악 폴더가 없습니다: ${musicDir}`);
+  } else {
+    fs.readdir(musicDir, (err, files) => {
+      if (err) {
+        console.error("🎵 폴더 읽기 실패:", err);
+        return;
+      }
+      playlist = (files || []).filter(file => file.toLowerCase().endsWith('.mp3'));
+      if (playlist.length === 0) {
+        console.warn("❗ MP3 파일이 없습니다.");
+        return;
+      }
+      playCurrent();
+    });
+  }
+
+  function playCurrent() {
+    if (!playlist.length) return;
+    const songPath = path.join(musicDir, playlist[currentIndex]).replace(/\\/g, '/');
+    console.log("▶️ 재생할 곡:", songPath);
+
+    audio.src = `file:///${songPath}`;
+    audio.load();
+    audio.play().catch(e => console.warn("재생 실패:", e));
+  }
+
+  audio.addEventListener('ended', () => {
+    if (!playlist.length) return;
+    currentIndex = (currentIndex + 1) % playlist.length;
+    playCurrent();
+  });
+
+  // 재생 중 에러 시 다음 곡으로 스킵
+  audio.addEventListener('error', () => {
+    if (!playlist.length) return;
+    console.warn("재생 오류, 다음 곡으로 이동");
+    currentIndex = (currentIndex + 1) % playlist.length;
+    setTimeout(playCurrent, 1000);
+  });
+</script>

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>camera_shot</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Nanum+Gothic&display=swap" rel="stylesheet">
+  
+  <style>
+    .timer {
+      position: fixed;
+      top: 8rem;           /* 브라우저 최상단에서 1.5rem */
+      right: 15rem;           /* 브라우저 오른쪽에서 2rem */
+      font-size: 4rem;
+      font-weight: bold;
+      color: rgb(0, 0, 0);
+      padding: 10px 20px;
+      border-radius: 20px;
+      z-index: 999;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="timer" id="countdown">60</div>
+    <div class="title_camera">
+        <h1>아래의 버튼을 누르면 5초 후에 촬영이 시작됩니다! </h1>
+    </div>
+    <button class="btn" onclick="location.href='camera_shot.html'">촬영</button>   
+  </div>
+
+  <script>
+    let timeLeft = 60;
+    const timerDisplay = document.getElementById('countdown');
+
+    const countdown = setInterval(() => {
+      timeLeft--;
+      timerDisplay.textContent = `${timeLeft}`;
+
+      if (timeLeft <= 0) {
+        clearInterval(countdown);
+        window.location.href = "camera_shot.html";  // 다음 페이지로 이동
+      }
+    }, 1000);
+  </script>
+
+</body>
+</html>

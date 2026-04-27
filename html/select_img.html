@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>사진 결과</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Nanum+Gothic&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background-color: #ffefc5;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="result-container">
+        <div class="photo-box">
+          <img id="capturedImage" src="" alt="캡처 이미지">
+        </div>
+    
+        <div class="button-group">
+          <button class="gray-button" onclick="retry()">다시 촬영</button>
+          <button class="green-button" onclick="complete()">선택 완료</button>
+        </div>
+      </div>
+    
+
+    <script src="../js/save_img.js"></script>
+
+</body>
+</html>

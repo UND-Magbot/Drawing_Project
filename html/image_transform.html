@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>로딩 중...</title>
+  <link href="../css/style.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Nanum+Gothic&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      margin: 0;
+      background-color: #fff7e0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      font-family: Arial, sans-serif;
+      flex-direction: column;
+    }
+
+  </style>
+</head>
+<body>
+
+  <div class="loading-text">이미지 변환 중입니다<span id="dots" class="dots"></span></div>
+
+  <div class="progress-container">
+    <div class="progress-bar" id="bar"></div>
+  </div>
+
+  <script>
+    // 진행 바 애니메이션 (실제 페이지 이동은 transform_image.js에서 [end] 수신 후 수행)
+    const progressBar = document.getElementById('bar');
+    setTimeout(() => {
+      progressBar.style.width = '95%';
+    }, 100);
+
+    // 점 (...) 애니메이션
+    const dotsElement = document.getElementById('dots');
+    const dotStates = ['', '.', '..', '...'];
+    let dotIndex = 0;
+    setInterval(() => {
+      dotIndex = (dotIndex + 1) % dotStates.length;
+      dotsElement.textContent = dotStates[dotIndex];
+    }, 1000);
+  </script>
+  <script src="../js/transform_image.js"></script>
+</body>
+</html>
