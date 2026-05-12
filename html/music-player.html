@@ -1,5 +1,6 @@
 <audio id="bgm" controls autoplay></audio>
 
+<script src="../js/store.js"></script>
 <script>
   const fs = require('fs');
   const path = require('path');
@@ -11,27 +12,17 @@
   let playlist = [];
   let currentIndex = 0;
 
-  const savedVolume = parseFloat(localStorage.getItem('musicVolume'));
-  const initialVolume = isNaN(savedVolume) ? 0.5 : savedVolume;
-  let volumeSet = false;
+  const savedVolume = parseFloat(persistentStorage.getItem('musicVolume'));
+  let currentVolume = isNaN(savedVolume) ? 0.5 : savedVolume;
 
-  // ✅ 이벤트 먼저 등록
   audio.addEventListener('loadedmetadata', () => {
-    console.log("📥 loadedmetadata 이벤트 진입");
-    audio.volume = initialVolume;
-    console.log('🔊 오디오 볼륨 설정됨:', initialVolume);
+    audio.volume = currentVolume;
   });
 
   ipcRenderer.on('set-volume', (event, volume) => {
-    // initialVolume = volume;
-    volumeSet = true;
-
-    // 이미 로드된 경우 즉시 반영
-    if (audio.readyState >= 1) {
-      audio.volume = volume;
-      localStorage.setItem('musicVolume', volume);
-      console.log('🔊 이미 로드됨 → 즉시 볼륨 적용:', volume);
-    }
+    currentVolume = volume;
+    audio.volume = volume;
+    persistentStorage.setItem('musicVolume', volume);
   });
 
   // ✅ 시작 시 볼륨 요청

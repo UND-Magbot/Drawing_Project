@@ -1,10 +1,21 @@
 import os
 import sys
 import time
+import threading
 import traceback
 from PyQt5.QtWidgets import QApplication
 
 from cobot import *
+
+
+# cobot.py 백그라운드 스레드가 DisConnectToCB() 이후 닫힌 소켓에 접근해
+# OSError/BrokenPipeError를 던지는 traceback 억제 (기능에는 영향 없음)
+def _silence_socket_shutdown_errors(args):
+    if issubclass(args.exc_type, (OSError, BrokenPipeError)):
+        return
+    sys.__excepthook__(args.exc_type, args.exc_value, args.exc_traceback)
+
+threading.excepthook = _silence_socket_shutdown_errors
 
 def main():
     app = QApplication(sys.argv)

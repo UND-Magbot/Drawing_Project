@@ -75,6 +75,8 @@
         console.error('카메라 접근 실패:', err);
       });
   </script>
+  <script src="../js/store.js"></script>
+  <script src="../js/logger.js"></script>
   <script src="../js/Drawing_image.js"></script>
   <script>
     console.log(path)
@@ -86,7 +88,8 @@
     const previewSound2 = new Audio(audioPath2);
 
     function handleVolumePreview() {
-      const value = parseFloat(localStorage.getItem('appVolume'));
+      const saved = parseFloat(persistentStorage.getItem('appVolume'));
+      const value = isFinite(saved) ? Math.max(0, Math.min(1, saved)) : 0.5;
       previewSound2.volume = value;
 
       try {
@@ -105,7 +108,7 @@
   <script>
     // 볼륨 동기화
     window.addEventListener('DOMContentLoaded', () => {
-      const savedVolume = localStorage.getItem('appVolume');
+      const savedVolume = persistentStorage.getItem('appVolume');
 
       if (savedVolume !== null) {
         const volume = parseFloat(savedVolume);

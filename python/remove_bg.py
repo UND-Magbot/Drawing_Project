@@ -1,5 +1,13 @@
+import os
 import sys
 import traceback
+
+# Windows 콘솔(cp949)에서 비-ASCII 출력 시 UnicodeEncodeError로 죽는 것 방지
+try:
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+except Exception:
+    pass
 
 from PIL import Image
 import numpy as np
@@ -11,9 +19,18 @@ from ultralytics import YOLO
 input_path = 'C:/drawing_data/FaceImages/face.png'
 output_path = 'C:/drawing_data/FaceImages/face1.png'
 
+# 스크립트 위치 기준으로 모델 절대 경로 계산 (cwd 무관 동작)
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+_PROJECT_ROOT = os.path.dirname(_SCRIPT_DIR)
+_YOLO_MODEL_PATH = os.path.join(_PROJECT_ROOT, 'yolov8n.pt')
+
 try:
+    if not os.path.exists(_YOLO_MODEL_PATH):
+        print(f"[error: YOLO 모델 파일을 찾을 수 없습니다: {_YOLO_MODEL_PATH}]")
+        sys.exit(1)
+
     # === YOLO 모델 로드 ===
-    model = YOLO('yolov8n.pt')
+    model = YOLO(_YOLO_MODEL_PATH)
 
     # === 이미지 로드 및 좌우반전 ===
     image_bgr = cv2.imread(input_path)

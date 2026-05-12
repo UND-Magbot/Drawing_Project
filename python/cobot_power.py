@@ -1,8 +1,17 @@
 import sys
 import time
+import threading
 import traceback
 from PyQt5.QtWidgets import QApplication
 from cobot import *
+
+
+def _silence_socket_shutdown_errors(args):
+    if issubclass(args.exc_type, (OSError, BrokenPipeError)):
+        return
+    sys.__excepthook__(args.exc_type, args.exc_value, args.exc_traceback)
+
+threading.excepthook = _silence_socket_shutdown_errors
 
 
 def _wait_connect(timeout=10):
@@ -12,6 +21,16 @@ def _wait_connect(timeout=10):
             return False
         QApplication.processEvents()
         time.sleep(0.1)
+    return True
+
+
+def _wait_idle(timeout=30):
+    start_time = time.time()
+    while not IsIdle():
+        if time.time() - start_time > timeout:
+            return False
+        QApplication.processEvents()
+        time.sleep(0.05)
     return True
 
 
@@ -70,6 +89,16 @@ def servo_off():
         print("[INFO] 로봇 연결 성공!")
         SetProgramMode(PG_MODE.REAL)
         time.sleep(5)
+
+        # 전원 차단 전 안전 위치로 이동 (바닥 충돌 방지)
+        print("[INFO] 안전 위치로 이동 중...")
+        SetBaseSpeed(0.5)
+        time.sleep(0.5)
+        safe_position = "660, 450, 400, 90.03, 0.35, -86.91"
+        ManualScript(f"movetcp 0.5, 0.5, {safe_position}")
+        time.sleep(0.1)
+        if not _wait_idle(30):
+            print("[WARN] 안전 위치 이동 타임아웃, 전원 차단을 그대로 진행합니다")
 
         print("[INFO] Servo Power OFF 시도")
         RobotPowerDown()

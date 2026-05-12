@@ -23,9 +23,16 @@
     "files": [
       "**/*"
     ],
+    "asarUnpack": [
+      "python/**",
+      "*.pt",
+      "MusicFolder/**",
+      "html/assets/**",
+      "images/**"
+    ],
     "win": {
       "icon": "icon.ico",
       "target": "nsis"
-    }  
+    }
   }
 }

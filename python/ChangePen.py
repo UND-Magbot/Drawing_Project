@@ -1,8 +1,17 @@
 import sys
 import time
+import threading
 import traceback
 from PyQt5.QtWidgets import QApplication
 from cobot import *
+
+
+def _silence_socket_shutdown_errors(args):
+    if issubclass(args.exc_type, (OSError, BrokenPipeError)):
+        return
+    sys.__excepthook__(args.exc_type, args.exc_value, args.exc_traceback)
+
+threading.excepthook = _silence_socket_shutdown_errors
 
 
 def _wait_connect(timeout=10):

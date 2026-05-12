@@ -13,7 +13,11 @@ const mediaElements = document.querySelectorAll('audio, video');
 const extraSounds = []; // 동적 Audio() 객체는 여기에 등록
 
 window.addEventListener('DOMContentLoaded', () => {
-    const savedVolume = localStorage.getItem('appVolume');
+    if (!sessionStorage.getItem('appStarted')) {
+        sessionStorage.setItem('appStarted', '1');
+        appendLog('app', 'start');
+    }
+    const savedVolume = persistentStorage.getItem('appVolume');
 
     if (savedVolume !== null) {
         const value = parseFloat(savedVolume);
@@ -28,7 +32,7 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    const savedVolume2 = localStorage.getItem('musicVolume');
+    const savedVolume2 = persistentStorage.getItem('musicVolume');
 
     if (savedVolume2 !== null) {
         const value = parseFloat(savedVolume2);
@@ -85,7 +89,7 @@ volumeSlider.addEventListener('input', function () {
     });
 
     // ✅ 저장
-    localStorage.setItem('appVolume', value);
+    persistentStorage.setItem('appVolume', value);
 
 
 });
@@ -108,7 +112,7 @@ volumeSlider2.addEventListener('input', function () {
 
     // 음악 윈도우에만 전달 (효과음에는 영향 없음)
     // index.html에서 이미 IPC를 보내므로 여기서는 저장만
-    localStorage.setItem('musicVolume', value);
+    persistentStorage.setItem('musicVolume', value);
 
 
 });
@@ -134,6 +138,8 @@ volumeSlider2.addEventListener('touchend', handleVolumePreview2);
 function setRobotPower(turnOn) {
     const isOn = robotPowerOnBtn.classList.contains('active');
     if (turnOn === isOn) return;
+
+    persistentStorage.setItem('robotPowerState', turnOn);
 
     if (turnOn) {
         document.getElementById('RobotloadingText').textContent = '로봇 실행중'
@@ -161,7 +167,7 @@ function updatePowerButton(state) {
     }
     if (isFirst) {
         RobotSound(state)
-        localStorage.setItem('robotPowerState', state);
+        persistentStorage.setItem('robotPowerState', state);
         document.getElementById('RobotloadingOverlay').style.display = 'none';
     }
     else {
@@ -213,6 +219,8 @@ function setPenPosition(target) {
     if (target === 'change' && isChangeActive) return;
     if (target === 'home' && isHomeActive) return;
 
+    persistentStorage.setItem('penPositionState', target === 'change');
+
     if (target === 'change') {
         document.getElementById('RobotloadingText').textContent = '로봇 교체 위치로 이동중'
         document.getElementById('RobotloadingBox').style.color = 'rgb(0, 196, 0)';
@@ -236,7 +244,7 @@ function updatePenButton(state) {
         robotMoveChangeBtn.classList.remove('active');
         robotMoveHomeBtn.classList.add('active');
     }
-    localStorage.setItem('penPositionState', state);
+    persistentStorage.setItem('penPositionState', state);
     document.getElementById('RobotloadingOverlay').style.display = 'none';
 }
 
@@ -257,46 +265,56 @@ function showRobotError(msg) {
 }
 
 function runPython(value) {
+    appendLog('robot_power', 'start', value);
     const cmd = value == 'on' ? 'python python/cobot_power.py on' : 'python python/cobot_power.py off';
     const expectToken = value == 'on' ? '[power_on_ok]' : '[power_off_ok]';
     const targetState = value == 'on';
     exec(cmd, { maxBuffer: 1024 * 1024 * 5 }, (error, stdout, stderr) => {
         if (error) {
             console.error('전원 명령 오류:', error.message, stderr);
+            appendLog('robot_power', 'error', '응답 없음: ' + error.message);
             showRobotError('로봇 응답 없음. 연결을 확인하세요.');
             return;
         }
         console.log(stdout);
         if (stdout.includes(expectToken)) {
+            appendLog('robot_power', 'end', value);
             updatePowerButton(targetState);
         } else {
             const m = stdout.match(/\[error: (.+?)\]/);
+            const reason = m ? m[1] : '로봇 명령 실패';
+            appendLog('robot_power', 'error', reason);
             showRobotError(m ? `실패: ${m[1]}` : '로봇 명령 실패');
         }
     });
 }
 
 function changePen(value) {
+    appendLog('pen', 'start', value);
     const cmd = value == 'change' ? 'python python/ChangePen.py change' : 'python python/ChangePen.py home';
     const targetState = value == 'change';
     exec(cmd, { maxBuffer: 1024 * 1024 * 5 }, (error, stdout, stderr) => {
         if (error) {
             console.error('펜 이동 오류:', error.message, stderr);
+            appendLog('pen', 'error', '응답 없음: ' + error.message);
             showRobotError('로봇 응답 없음. 연결을 확인하세요.');
             return;
         }
         console.log(stdout);
         if (stdout.includes('[pen_ok]')) {
+            appendLog('pen', 'end', value);
             updatePenButton(targetState);
         } else {
             const m = stdout.match(/\[error: (.+?)\]/);
+            const reason = m ? m[1] : '펜 이동 실패';
+            appendLog('pen', 'error', reason);
             showRobotError(m ? `이동 실패: ${m[1]}` : '펜 이동 실패');
         }
     });
 }
 
 function SystemOff() {
-    console.log("인")
+    appendLog('app', 'quit');
     const { ipcRenderer } = require('electron');
     ipcRenderer.send('app-quit');
 }

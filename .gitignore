@@ -6,6 +6,7 @@ yarn-error.log*
 
 # Electron build output
 dist/
+dist_draiwin/
 out/
 release/
 *.exe

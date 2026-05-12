@@ -72,119 +72,21 @@
       <span class="navy bounce" style="animation-delay: 1.2s;">로</span>
       <span class="pink bounce" style="animation-delay: 1.4s;">봇</span>
     </div>
-    <div class="sub">키오스크에서 결제 후 이용해주세요!</div>
-    <button id="startBtn" class="btn" disabled>시작하기</button>
-    <div id="statusMsg" style="margin-top: 10px; color: red;"></div>
+    <div class="sub">시작하기 버튼을 눌러주세요!</div>
+    <button id="startBtn" class="btn" onclick="location.href='paper_info.html'">시작하기</button>
   </div>
   <script>
     sessionStorage.setItem('hasRetried', 'false');  // 촬영 기록 리셋
-    const startBtn = document.getElementById('startBtn');
-    const statusMsg = document.getElementById('statusMsg');
-    let lastOrderNum = '';  // 중복 주문 방지용
-    let orderDetected = false;
-
-    function formatDate(date) {
-      return date.toISOString().slice(0, 10);
-    }
-
-    async function fetchOrder() {
-      const url = 'https://boorsue.co.kr/vbPHP/toorderload.php';
-      const id = 'dsdc'; // 여기에 실제 ID 입력
-      const pw = '12345'; // 여기에 실제 PW 입력
-
-      const today = new Date();
-      const yesterday = new Date(today);
-      yesterday.setDate(today.getDate() - 1);
-
-      const formData = new URLSearchParams({
-        ID: id,
-        PassWord: pw,
-        day: formatDate(yesterday),
-        day2: formatDate(today),
-        noshowt: 'N',
-        select: '접수'
-      });
-
-      try {
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: formData.toString(),
-        });
-
-        const text = await response.text();
-
-        const hasOrder = text.includes('<menubrrs>') && !text.includes('<menubrrs></menubrrs>');
-
-        if (hasOrder) {
-          // 주문번호 추출
-          const numMatch = text.match(/<menubrrs>.*?num\[(\d+)\]num/);
-          const orderNum = numMatch ? numMatch[1] : null;
-          const completedOrderNum = sessionStorage.getItem('completedOrderNum');
-          sessionStorage.setItem('orderNum', orderNum);
-          if (!orderDetected && orderNum && orderNum !== lastOrderNum &&
-            orderNum !== completedOrderNum) {
-            orderDetected = true;
-            // 새 주문이 있을 경우
-            lastOrderNum = orderNum;
-            startBtn.disabled = false;
-            startBtn.onclick = () => location.href = 'paper_info.html';
-            // statusMsg.textContent = `주문 확인됨 (주문번호: ${orderNum} complete ${completedOrderNum})`;
-          } else {
-            // 중복 주문인 경우
-            if (!orderDetected) {
-              startBtn.disabled = true;
-              // startBtn.disabled = false;
-              // startBtn.onclick = () => location.href = 'paper_info.html';
-              // statusMsg.textContent = '새로운 주문이 없습니다.';
-            }
-
-          }
-        } else {
-          // 주문 없음
-          if (!orderDetected) {
-            startBtn.disabled = true;
-            // startBtn.disabled = false;
-            // startBtn.onclick = () => location.href = 'paper_info.html';
-            // statusMsg.textContent = '현재 처리할 수 있는 주문이 없습니다.';
-          }
-        }
-      } catch (error) {
-        // statusMsg.textContent = 'API 요청 실패: ' + error.message;
-      }
-    }
-
-    // 초기 1회 + 5초 간격 반복 요청 (주문 감지 시 자동 정지)
-    let orderPollId = null;
-    window.onload = function () {
-      fetchOrder();
-      orderPollId = setInterval(() => {
-        if (orderDetected) {
-          clearInterval(orderPollId);
-          orderPollId = null;
-          return;
-        }
-        fetchOrder();
-      }, 5000);
-    };
-    window.addEventListener('beforeunload', () => {
-      if (orderPollId) {
-        clearInterval(orderPollId);
-        orderPollId = null;
-      }
-    });
   </script>
   <script>
     window.addEventListener('DOMContentLoaded', () => {
-      let savedState = localStorage.getItem('robotPowerState');
+      let savedState = persistentStorage.getItem('robotPowerState');
       let state = savedState === 'true'; // 문자열 → 불리언 변환
       console.log(savedState)
       updatePowerButton(state);
 
       // 펜 위치 복원 (저장값 없으면 홈)
-      let savedPenState = localStorage.getItem('penPositionState');
+      let savedPenState = persistentStorage.getItem('penPositionState');
       let penState = savedPenState === 'true';
       updatePenButton(penState);
     });
@@ -197,6 +99,8 @@
     });
 
   </script>
+  <script src="../js/store.js"></script>
+  <script src="../js/logger.js"></script>
   <script src="../js/main.js"></script>
 </body>
 

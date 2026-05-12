@@ -2,6 +2,14 @@ import os
 import sys
 import traceback
 
+# Windows 콘솔(cp949)에서 비-ASCII 출력 시 UnicodeEncodeError가 나서
+# 호출 측(JS exec)이 변환 실패로 오인하는 문제 방지.
+try:
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+except Exception:
+    pass
+
 import cv2
 import numpy as np
 from PIL import Image
@@ -171,8 +179,11 @@ try:
         f.write("\n".join(txt_lines))
     cv2.imwrite(output_img_path, annotated_image)
 
-    print("✅ 패턴 간소화 + 좌표 변환 + 파일 저장 완료:", output_txt_path)
     print("[end]")
+    try:
+        print("패턴 간소화 + 좌표 변환 + 파일 저장 완료:", output_txt_path)
+    except Exception:
+        pass
 except SystemExit:
     raise
 except Exception as e:

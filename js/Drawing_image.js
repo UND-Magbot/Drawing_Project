@@ -7,36 +7,53 @@ function showDrawingError(msg) {
   if (sub) sub.textContent = '5초 후 시작화면으로 돌아갑니다';
   setTimeout(() => {
     sessionStorage.removeItem('capturedImage');
-    sessionStorage.removeItem('orderNum');
     window.location.href = 'index.html';
   }, 5000);
 }
 
 function runPython() {
-  exec('python python/em_mainauto.py', { maxBuffer: 1024 * 1024 * 20 }, (error, stdout, stderr) => {
-    if (error) {
-      console.error('그리기 오류:', error.message, stderr);
-      showDrawingError('로봇 그리기 실패');
+  appendLog('drawing', 'start');
+  const pathMod = require('path');
+  const fsMod = require('fs');
+  const rawRoot = pathMod.resolve(__dirname, '..');
+  const cwd = rawRoot.includes('app.asar') && !rawRoot.includes('app.asar.unpacked')
+    ? rawRoot.replace('app.asar', 'app.asar.unpacked')
+    : rawRoot;
+  const scriptPath = pathMod.join(cwd, 'python', 'em_mainauto.py');
+  const env = Object.assign({}, process.env, { PYTHONIOENCODING: 'utf-8' });
+  const logPath = 'C:/drawing_data/drawing_debug.log';
+
+  exec(`python "${scriptPath}"`, { cwd, env, maxBuffer: 1024 * 1024 * 50 }, (error, stdout, stderr) => {
+    try {
+      fsMod.mkdirSync(pathMod.dirname(logPath), { recursive: true });
+      fsMod.writeFileSync(
+        logPath,
+        `=== ${new Date().toISOString()} ===\ncwd: ${cwd}\nscript: ${scriptPath}\n` +
+        `error: ${error ? `${error.code || ''} ${error.message}` : 'null'}\n` +
+        `--- stdout ---\n${stdout || ''}\n--- stderr ---\n${stderr || ''}\n`,
+        'utf-8'
+      );
+    } catch (_) {}
+
+    console.log('[drawing stdout]', stdout);
+    if (stderr) console.log('[drawing stderr]', stderr);
+
+    if (stdout && stdout.includes('[end]')) {
+      console.log('그림 종료');
+      appendLog('drawing', 'end');
+      handleVolumePreview2();
       return;
     }
-    console.log(stdout);
-    if (stdout.includes('[end]')) {
-      console.log('그림 종료');
-      const orderNum = sessionStorage.getItem('orderNum');
-      if (orderNum) {
-        handleVolumePreview2();
-      } else {
-        // 주문번호 없으면 그냥 시작화면으로
-        setTimeout(() => {
-          window.location.href = 'index.html';
-        }, 2000);
-      }
-    } else {
-      const m = stdout.match(/\[error: (.+?)\]/);
-      showDrawingError(m ? `그리기 실패: ${m[1]}` : '로봇 그리기 실패');
-    }
-  });
 
+    const haystack = `${stdout || ''}\n${stderr || ''}`;
+    const m = haystack.match(/\[error: (.+?)\]/);
+    let reason;
+    if (m) reason = m[1];
+    else if (error) reason = (error.message || '').split('\n')[0].slice(0, 120);
+    else reason = '알 수 없는 오류';
+    appendLog('drawing', 'error', reason);
+    showDrawingError(`그리기 실패: ${reason}`);
+  });
 }
 
 const path = require('path');
@@ -49,10 +66,9 @@ const audioPath = `file://${soundPath.replace(/\\/g, '/')}`;  // 윈도우 경�
 const previewSound = new Audio(audioPath);
 
 function handleVolumePreview2() {
-  console.log('소리끝2')
-  const value = parseFloat(localStorage.getItem('appVolume'));
+  const saved = parseFloat(persistentStorage.getItem('appVolume'));
+  const value = isFinite(saved) ? Math.max(0, Math.min(1, saved)) : 0.5;
   previewSound.volume = value;
-  console.log('소리끝')
   try {
     previewSound.currentTime = 0;
     previewSound.play();
@@ -60,46 +76,9 @@ function handleVolumePreview2() {
     console.warn('미리듣기 사운드 재생 실패:', e);
   }
   setTimeout(() => {
-    const orderNum2 = sessionStorage.getItem('orderNum');
-    sendFinishStatus(orderNum2);
-  }, 2000);
-}
-
-
-async function sendFinishStatus(orderNum) {
-  const url = "https://boorsue.co.kr/Admin/TOstatechangeYN.php";
-  const formData = new URLSearchParams({
-    ID: 'dsdc',             // ← 실제 ID
-    PassWord: '12345',       // ← 실제 PW
-    YNt: 'finish',
-    reason: '로봇 클리어',
-    zzimnum: orderNum
-  });
-
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: formData.toString(),
-    });
-
-    const resultText = await response.text();
-    if (resultText.includes("성공")) {
-      console.log("주문 상태 변경 성공");
-      sessionStorage.setItem('completedOrderNum', orderNum);
-    } else {
-      console.warn("주문 상태 변경 실패:", resultText);
-    }
-  } catch (error) {
-    console.error("API 호출 실패:", error);
-  } finally {
-    // 성공/실패 상관없이 항상 시작화면으로 복귀
     sessionStorage.removeItem('capturedImage');
-    sessionStorage.removeItem('orderNum');
     window.location.href = 'index.html';
-  }
+  }, 3000);
 }
 
 window.addEventListener('load', runPython);

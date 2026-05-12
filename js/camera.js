@@ -1,10 +1,12 @@
 async function startCamera() {
+  appendLog('camera', 'start');
   try {
     const devices = await navigator.mediaDevices.enumerateDevices();
     const videoDevices = devices.filter(device => device.kind === 'videoinput');
 
     if (videoDevices.length === 0) {
       console.error("사용 가능한 카메라가 없습니다.");
+      appendLog('camera', 'error', '카메라 장치 없음');
       showCameraError("카메라를 찾을 수 없습니다. 연결을 확인해주세요.");
       return;
     }
@@ -34,6 +36,7 @@ async function startCamera() {
 
   } catch (err) {
     console.error("카메라 오류:", err);
+    appendLog('camera', 'error', '카메라 접근 실패: ' + (err.message || err));
     showCameraError("카메라 접근에 실패했습니다. 권한을 확인해주세요.");
   }
 }
@@ -100,10 +103,11 @@ function takeSnapshot(video) {
   fs.writeFile(savePath, base64Data, { encoding: 'base64' }, (err) => {
     if (err) {
       console.error("이미지 저장 실패:", err);
+      appendLog('camera', 'error', '이미지 저장 실패: ' + err.message);
       // alert("이미지 저장 중 오류 발생!");
     } else {
       console.log("이미지 저장 성공:", savePath);
-      // alert("이미지가 정상 저장되었습니다.");
+      appendLog('camera', 'snapshot_saved');
       runPython();
     }
   });
@@ -131,21 +135,65 @@ window.addEventListener('load', startCamera);
 const { exec } = require('child_process');
 
 function runPython() {
-  exec('python python/remove_bg.py', { maxBuffer: 1024 * 1024 * 10 }, (error, stdout, stderr) => {
-    const overlay = document.getElementById('loadingOverlay');
-    if (error) {
-      console.error('remove_bg 오류:', error.message, stderr);
-      showCameraError('이미지 처리 실패. 다시 촬영해주세요.');
-      return;
+  appendLog('remove_bg', 'start');
+  const path = require('path');
+  const fsMod = require('fs');
+  // dev: <repo>/js/  → cwd = <repo>
+  // prod: ...\app.asar\js → 실제 파일은 ...\app.asar.unpacked\python\... 에 풀려있음
+  const rawRoot = path.resolve(__dirname, '..');
+  const cwd = rawRoot.includes('app.asar') && !rawRoot.includes('app.asar.unpacked')
+    ? rawRoot.replace('app.asar', 'app.asar.unpacked')
+    : rawRoot;
+  const scriptPath = path.join(cwd, 'python', 'remove_bg.py');
+  const env = Object.assign({}, process.env, { PYTHONIOENCODING: 'utf-8' });
+  const logPath = 'C:/drawing_data/remove_bg_debug.log';
+
+  const writeLog = (text) => {
+    try {
+      fsMod.mkdirSync(path.dirname(logPath), { recursive: true });
+      fsMod.writeFileSync(logPath, text, 'utf-8');
+    } catch (e) {
+      console.error('debug log write 실패:', e);
     }
-    console.log(stdout);
-    if (stdout.includes('[end]')) {
+  };
+
+  exec(`python "${scriptPath}"`, { cwd, env, maxBuffer: 1024 * 1024 * 50 }, (error, stdout, stderr) => {
+    const overlay = document.getElementById('loadingOverlay');
+    const debugDump =
+      `=== ${new Date().toISOString()} ===\n` +
+      `cwd: ${cwd}\n` +
+      `script: ${scriptPath}\n` +
+      `error: ${error ? `${error.code || ''} ${error.message}` : 'null'}\n` +
+      `--- stdout ---\n${stdout || ''}\n` +
+      `--- stderr ---\n${stderr || ''}\n`;
+    writeLog(debugDump);
+    console.log('[remove_bg stdout]', stdout);
+    if (stderr) console.log('[remove_bg stderr]', stderr);
+    if (error) console.error('remove_bg 오류:', error.message);
+
+    // stdout에 [end]가 있으면 성공으로 간주 (exit code와 무관)
+    if (stdout && stdout.includes('[end]')) {
       console.log('저장완료');
+      appendLog('remove_bg', 'end');
       if (overlay) overlay.style.display = 'none';
       window.location.href = '../html/select_img.html';
-    } else {
-      const m = stdout.match(/\[error: (.+?)\]/);
-      showCameraError(m ? `처리 실패: ${m[1]}` : '이미지 처리 실패');
+      return;
     }
+
+    // 우선순위: stdout/stderr의 [error: ...] > error.message 첫 줄 > 기본
+    const haystack = `${stdout || ''}\n${stderr || ''}`;
+    const m = haystack.match(/\[error: (.+?)\]/);
+    let reason;
+    if (m) {
+      reason = m[1];
+    } else if (error) {
+      reason = (error.message || '').split('\n')[0].slice(0, 120);
+    } else if (stderr) {
+      reason = stderr.trim().split('\n').slice(-1)[0].slice(0, 120);
+    } else {
+      reason = '알 수 없는 오류';
+    }
+    appendLog('remove_bg', 'error', reason);
+    showCameraError(`처리 실패: ${reason}`);
   });
 }
