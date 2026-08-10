@@ -94,7 +94,7 @@ def servo_off():
         print("[INFO] 안전 위치로 이동 중...")
         SetBaseSpeed(0.5)
         time.sleep(0.5)
-        safe_position = "660, 450, 400, 90.03, 0.35, -86.91"
+        safe_position = "660, 450, 500, 90.03, 0.35, -86.91"
         ManualScript(f"movetcp 0.5, 0.5, {safe_position}")
         time.sleep(0.1)
         if not _wait_idle(30):
